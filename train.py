@@ -4,8 +4,8 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from datasets import Dataset
 import json
 
-def load_inverted_dataset(split):
-    """Load your role-inverted dataset"""
+def load_human_user_dataset(split):
+    """Load the human-user fine-tuning dataset"""
     data = []
     with open(f"data/finetuning_dataset_{split}.jsonl", "r", encoding="utf-8") as f:
         for line in f:
@@ -15,6 +15,7 @@ def load_inverted_dataset(split):
 def format_for_training(example):
     """Format for causal language modeling (predict next token)"""
     # Combine chat_history + target_response as one sequence
+    # Chat history contains AI assistant messages, target is human user response
     full_text = example["chat_history"] + "\n" + example["target_response"]
     return {"text": full_text}
 
@@ -61,9 +62,20 @@ def setup_model_and_tokenizer():
     return model, tokenizer
 
 def main():
+    """
+    Train a model to act as a human user responding to AI assistant questions.
+    
+    Training format:
+    - Chat History: AI assistant messages (context)
+    - Target Response: Human user messages (what the model learns to generate)
+    
+    Example:
+    - Input: "Assistant: How can I help you today?"
+    - Target: "User: I want the recipe for a chocolate cake"
+    """
     # Load datasets
-    train_dataset = load_inverted_dataset("train")
-    val_dataset = load_inverted_dataset("validation")
+    train_dataset = load_human_user_dataset("train")
+    val_dataset = load_human_user_dataset("validation")
     
     # Format for training
     train_dataset = train_dataset.map(format_for_training)
@@ -74,6 +86,8 @@ def main():
     
     # Tokenize with target-only loss (mask history)
     def tokenize_and_mask(example, max_len=512):
+        # Chat history contains AI assistant messages (context)
+        # Target response is the human user message (what we want the model to learn)
         prompt = example["chat_history"].strip() if example.get("chat_history") else ""
         target = example["target_response"].strip() if example.get("target_response") else ""
         sep = "\n" if prompt else ""
@@ -82,12 +96,13 @@ def main():
         toks = tokenizer(full, truncation=True, max_length=max_len)
 
         # Compute prompt length in tokens for masking
+        # Only compute loss on the target (human user response), not the context
         prompt_ids = tokenizer(prompt + ("\n" if prompt else ""), add_special_tokens=False)["input_ids"] if prompt else []
         prompt_len = len(prompt_ids)
 
         labels = toks["input_ids"].copy()
         for i in range(min(prompt_len, len(labels))):
-            labels[i] = -100
+            labels[i] = -100  # Mask the context (AI assistant messages)
 
         toks["labels"] = labels
         return toks

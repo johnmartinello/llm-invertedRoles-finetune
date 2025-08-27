@@ -2,7 +2,6 @@ import pandas as pd
 import json
 import os
 
-# Create data folder if it doesn't exist
 data_folder = "data"
 
 # Read from data folder
@@ -55,27 +54,9 @@ df_trees_clean = pd.DataFrame(all_tree_messages)
 print(f"\nCleaned df_trees shape: {df_trees_clean.shape}")
 print("Cleaned df_trees columns:", df_trees_clean.columns.tolist())
 
-def invert_roles(df):
-    """Invert roles: prompter becomes assistant and assistant becomes prompter"""
-    df_inverted = df.copy()
-    
-    # Create a mapping for role inversion
-    role_mapping = {
-        'prompter': 'assistant',
-        'assistant': 'prompter'
-    }
-    
-    # Apply the role inversion
-    df_inverted['role'] = df_inverted['role'].map(role_mapping)
-    
-    # Add a suffix to indicate this is inverted data
-    df_inverted['role_inverted'] = True
-    
-    return df_inverted
-
-# Create inverted versions of both dataframes
-df_messages_inverted = invert_roles(df_messages_clean)
-df_trees_inverted = invert_roles(df_trees_clean)
+# The assistant (AI) asks questions, the prompter (human) responds
+df_messages_clean['role_original'] = True
+df_trees_clean['role_original'] = True
 
 # Display sample of cleaned data
 print("\nSample of cleaned df_messages:")
@@ -83,12 +64,6 @@ print(df_messages_clean.head())
 
 print("\nSample of cleaned df_trees:")
 print(df_trees_clean.head())
-
-print("\nSample of inverted df_messages:")
-print(df_messages_inverted.head())
-
-print("\nSample of inverted df_trees:")
-print(df_trees_inverted.head())
 
 # Save cleaned dataframes as JSONL (original roles) to data folder
 with open(os.path.join(data_folder, "messages_clean.jsonl"), "w", encoding="utf-8") as f:
@@ -99,18 +74,18 @@ with open(os.path.join(data_folder, "trees_clean.jsonl"), "w", encoding="utf-8")
     for _, row in df_trees_clean.iterrows():
         f.write(json.dumps(row.to_dict(), ensure_ascii=False) + "\n")
 
-# Save inverted dataframes as JSONL to data folder
+# Also save with the same names as expected by other scripts for compatibility
 with open(os.path.join(data_folder, "messages_inverted.jsonl"), "w", encoding="utf-8") as f:
-    for _, row in df_messages_inverted.iterrows():
+    for _, row in df_messages_clean.iterrows():
         f.write(json.dumps(row.to_dict(), ensure_ascii=False) + "\n")
 
 with open(os.path.join(data_folder, "trees_inverted.jsonl"), "w", encoding="utf-8") as f:
-    for _, row in df_trees_inverted.iterrows():
+    for _, row in df_trees_clean.iterrows():
         f.write(json.dumps(row.to_dict(), ensure_ascii=False) + "\n")
 
 print("\nCleaned dataframes saved to data folder:")
 print(f"- '{os.path.join(data_folder, 'messages_clean.jsonl')}' and '{os.path.join(data_folder, 'trees_clean.jsonl')}' (original roles)")
-print(f"- '{os.path.join(data_folder, 'messages_inverted.jsonl')}' and '{os.path.join(data_folder, 'trees_inverted.jsonl')}' (inverted roles)")
+print(f"- '{os.path.join(data_folder, 'messages_inverted.jsonl')}' and '{os.path.join(data_folder, 'trees_inverted.jsonl')}' (same as clean, for compatibility)")
 
 # Show some statistics
 print(f"\nStatistics:")
@@ -120,11 +95,8 @@ print(f"Original trees: {len(df_trees)}")
 print(f"Extracted tree messages: {len(df_trees_clean)}")
 print(f"Unique tree IDs: {df_trees_clean['tree_id'].nunique()}")
 
-# Show role distribution before and after inversion
-print(f"\nRole distribution in original cleaned data:")
+# Show role distribution
+print(f"\nRole distribution in cleaned data:")
 print(df_messages_clean['role'].value_counts())
 print(df_trees_clean['role'].value_counts())
 
-print(f"\nRole distribution in inverted data:")
-print(df_messages_inverted['role'].value_counts())
-print(df_trees_inverted['role'].value_counts())

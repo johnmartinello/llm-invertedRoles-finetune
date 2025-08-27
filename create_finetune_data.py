@@ -317,26 +317,19 @@ def create_conversations_from_trees(df_trees: pd.DataFrame) -> List[Dict[str, An
         # Create a conversation for each path
         for path_idx, path in enumerate(paths):
             if len(path) > 1:  # Only include paths with multiple messages
-                # Invert roles for this path, preserving unknown roles
-                inverted_path = []
+                conversation_path = []
                 for msg in path:
-                    if msg['role'] == 'prompter':
-                        inverted_role = 'assistant'
-                    elif msg['role'] == 'assistant':
-                        inverted_role = 'prompter'
-                    else:
-                        inverted_role = msg['role']
-                    inverted_path.append({
-                        'role': inverted_role,
+                    conversation_path.append({
+                        'role': msg['role'], 
                         'content': msg['text']
                     })
                 
                 conversations.append({
                     'conversation_id': f'{tree_id}_path_{path_idx}',
-                    'messages': inverted_path,
+                    'messages': conversation_path,
                     'source': 'tree_path',
                     'original_tree_id': tree_id,
-                    'path_length': len(inverted_path)
+                    'path_length': len(conversation_path)
                 })
     
     return conversations
@@ -405,16 +398,16 @@ def filter_conversations(conversations: List[Dict[str, Any]],
 
 def create_chat_format_with_role_tokens(conversations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Convert conversations to chat format with role tokens in text.
-    Create one training sample for every 'user' turn (the model will learn to speak as the user).
+    Create one training sample for every 'prompter' turn (the model will learn to speak as the human user).
     """
     formatted_conversations = []
 
     for conv in conversations:
         messages = conv['messages']
 
-        # Build examples for each inverted 'prompter' turn (renders as "User: ") with at least 1 prior message as context
+        # Build examples for each 'prompter' turn (renders as "User: ") with at least 1 prior message as context
         for i, target_message in enumerate(messages):
-            # After inversion, 'prompter' corresponds to the human/user side
+            # 'prompter' corresponds to the human/user side (what we want the model to learn)
             if target_message['role'] != 'prompter':
                 continue
             if i == 0:
@@ -427,7 +420,7 @@ def create_chat_format_with_role_tokens(conversations: List[Dict[str, Any]]) -> 
                 history_lines.append(role_prefix + msg['content'].strip())
             chat_history = "\n".join(history_lines)
 
-            # Target is the current 'prompter' (renders as User)
+            # Target is the current 'prompter' (renders as User) - this is what the model will learn to generate
             target_role_prefix = "User: "
             target_text = target_role_prefix + target_message['content'].strip()
 
@@ -506,8 +499,18 @@ def create_finetuning_dataset(split_data: Dict[str, List[Dict[str, Any]]],
         print(f"Saved {len(conversations)} conversations to {filename}")
 
 def main():
-    """Main function to create conversation dataset"""
-    print("Loading data...")
+    """Main function to create conversation dataset for human-user fine-tuning"""
+    print("=" * 80)
+    print("CREATING FINE-TUNING DATASET FOR HUMAN-USER BEHAVIOR")
+    print("=" * 80)
+    print("This script creates training data where the model learns to act as a human user")
+    print("responding to AI assistant questions. The model will learn to:")
+    print("- Respond to AI questions as a human would")
+    print("- Provide human-like responses to assistant prompts")
+    print("- Act as the user side of conversations")
+    print("=" * 80)
+    
+    print("\nLoading data...")
     df_trees_original, df_messages_inverted = load_original_tree_data()
     
     if df_trees_original is None or df_messages_inverted is None:
@@ -616,13 +619,21 @@ def main():
         print("-" * 50)
     
     data_folder = "data"
-    print(f"\nDataset creation complete! You can now use the generated files for LLM fine-tuning:")
+    print(f"\n" + "=" * 80)
+    print(f"DATASET CREATION COMPLETE!")
+    print(f"=" * 80)
+    print(f"Generated files for human-user fine-tuning:")
     print(f"- {os.path.join(data_folder, 'finetuning_dataset_train.jsonl')}")
     print(f"- {os.path.join(data_folder, 'finetuning_dataset_validation.jsonl')}") 
     print(f"- {os.path.join(data_folder, 'finetuning_dataset_test.jsonl')}")
+    print(f"\nTraining behavior:")
+    print(f"- The model will learn to act as a human user responding to AI questions")
+    print(f"- Chat history contains AI assistant messages (context)")
+    print(f"- Target responses are human user messages (what the model learns to generate)")
     print(f"\nRecommended training parameters:")
     print(f"- max_sequence_length: {max_seq_length}")
     print(f"- truncation_strategy: {truncation_strategy}")
+    print(f"=" * 80)
 
 if __name__ == "__main__":
     main()
