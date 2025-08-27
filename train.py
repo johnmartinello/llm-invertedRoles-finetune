@@ -133,8 +133,8 @@ def main():
         save_total_limit=2,
         load_best_model_at_end=True,
         # Precision
-        fp16=True,  # 3060 Ti works best with fp16
-        bf16=False, # disable bf16 (your GPU doesn’t support it)
+        fp16=True,
+        bf16=False,
         # Memory
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
@@ -169,10 +169,8 @@ def main():
         callbacks=[PerplexityCallback()],
     )
     
-    # Train
     trainer.train()
     
-    # Save adapters
     trainer.save_model()
 
 if __name__ == "__main__":
