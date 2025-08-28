@@ -82,11 +82,17 @@ After fine-tuning, the model will:
 The model learns to act as a human user responding to AI assistant questions, providing realistic human-like responses to various prompts and questions.
 
 ## Results
-Was only able to train for .2 epoch on my computer (~8 hours on a 3060 Ti 8gb). But the train/loss and eval/loss are showing that the model is learning (something).
+I trained it onlyfor ~.2 epoch on my computer (~8 hours on a 3060 Ti 8gb). But the train/loss and eval/loss are showing that the model is learning (something).
 ![train_data](images/train_data.png)
-In the future i will train for a full epoch and see how the model performs.
 
+After training, I tested the model with a few prompts and it worked (surprisingly well, even with no system prompt). I initilized the chat with an empty message and the model responded with a human-like response.
+![inference_chat](images/chat_1.png)
+It was also able to continue the conversation with a human-like response (although it did respond like an AI in third message, in the fourth message it responded like a human again).
+![inference_chat](images/chat_2.png)
+![inference_chat](images/chat_3.png)
+![inference_chat](images/chat_4.png)
 
+So, even with a small amount of training data, you can see that the model is able to generate human-like responses to AI assistant questions. I'm sure that if I trained it for a full epoch (or more), it would be able to generate even better conversations.
 
 
 
